@@ -204,10 +204,16 @@ int main()
 
 			// Move left until we ge near the left edge.
 			if (bstate[i] == SeekLeft && bumper.pos.x < 50)
+			{
 				if (fabs(bumper.pos.y - 400) < 50)
+				{
 					bstate[i] = MoveUp;
+				}
 				else
+				{
 					bstate[i] = SeekRight;
+				}
+			}
 
 			if (bstate[i] != MoveUp)
 			{
@@ -268,6 +274,7 @@ int main()
 			}
 
 			// Output the bumper's move.
+			force = {0, 0};
 			cout << force.x << " " << force.y << " ";
 		}
 
@@ -296,7 +303,9 @@ int main()
 			// Move the loop ahead.
 			sledDir = 0;
 		}
+		// sledDir = 0.39269;
 		// Output the sled's move.
+
 		cout << sledDir << endl;
 
 		cin >> turnNum;

@@ -8,7 +8,12 @@ Basic game structure for nFactorial AI CUP 2023, game track
 ### Instructions to start your code
 
 ```
-<code>
+java -jar capture.jar -player builtin LoopyPlayer -player builtin LoopyPlayer
+java -jar capture.jar -player builtin RandomPlayer -player builtin LoopyPlayer
+
+java -jar capture.jar -player cpp bin/rebot -player builtin LoopyPlayer
+
+g++ -o bin/rebot src/main.cpp
 ```
 
 ### Typeform to submit:
