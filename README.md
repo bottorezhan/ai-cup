@@ -1,9 +1,9 @@
 # nFactorial-AI-Cup-GameTrack
 Basic game structure for nFactorial AI CUP 2023, game track
 
-## < Your name >
+## < Torezhan Botakanov >
 
-### < Your Bot's name >
+### < Re:bot >
 
 ### Instructions to start your code
 
