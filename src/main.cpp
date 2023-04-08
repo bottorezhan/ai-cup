@@ -41,6 +41,8 @@ struct Sled
 	// Position of the sled.
 	Vector2D pos;
 
+	vector<Vector2D> path;
+
 	// Sled direction.
 	double dir;
 };
@@ -62,7 +64,7 @@ double clamp(double x, double low, double high)
 	the bumper toward the target.  The function returns true until it
 	looks like the next move will take us through the target
 	location.  */
-bool runTo(Vector2D const &pos,
+bool run_to(Vector2D const &pos,
 		   Vector2D const &vel,
 		   Vector2D const &target,
 		   Vector2D &force,
@@ -98,7 +100,7 @@ bool runTo(Vector2D const &pos,
 
 /** Return true if a puck at position pos is the responsibility of the
 	bumper with index bdex. */
-bool mySide(int bdex, Vector2D pos)
+bool my_side(int bdex, Vector2D pos)
 {
 	if (bdex == 0 && pos.y < 330)
 		return true;
@@ -107,36 +109,38 @@ bool mySide(int bdex, Vector2D pos)
 	return false;
 }
 
-int main()
+pair<Vector2D, double> circumscribed_circle(Vector2D p1, Vector2D p2, Vector2D p3)
 {
-	// List of current sled, bumper and puck locations.  These are
-	// updated on every turn snapshot from the server.
+	double a = sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
+	double b = sqrt((p3.x - p1.x) * (p3.x - p1.x) + (p3.y - p1.y) * (p3.y - p1.y));
+	double c = sqrt((p3.x - p2.x) * (p3.x - p2.x) + (p3.y - p2.y) * (p3.y - p2.y));
+	double radius = (a * b * c) / (sqrt((a + b + c) * (b + c - a) * (c + a - b) * (a + b - c)));
+	double d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+	double xp = ((p1.x * p1.x + p1.y * p1.y) * (p2.y - p3.y) + (p2.x * p2.x + p2.y * p2.y) * (p3.y - p1.y) + (p3.x * p3.x + p3.y * p3.y) * (p1.y - p2.y)) / d;
+	double yp = ((p1.x * p1.x + p1.y * p1.y) * (p3.x - p2.x) + (p2.x * p2.x + p2.y * p2.y) * (p1.x - p3.x) + (p3.x * p3.x + p3.y * p3.y) * (p2.x - p1.x)) / d;
+
+	return {{xp, yp}, radius};
+}
+
+pair<Vector2D, double> find_center(vector<Vector2D> path)
+{
+	
+	if (path.size() < 3) {
+		return {(path.front() - path.back()) * 0.5, 0};
+	}
+
+	return circumscribed_circle(path.front(), path[path.size() / double(2)], path.back());
+}
+
+struct GameState
+{
 	vector<Puck> plist;
 	vector<Bumper> blist;
 	vector<Sled> slist;
 
-	// State of each bumper.
-	enum BumperState
-	{
-		SeekLeft,
-		SeekRight,
-		MoveUp,
-	};
+	void read() {
+		int n;
 
-	BumperState bstate[2] = {MoveUp, MoveUp};
-
-	// Latest target for each bumper, the bumper will try to move through
-	// this position to hit a puck toward the horizontal center.
-	Vector2D target[2];
-
-	// How much longer the bumper has to pursue its target.  This keeps
-	// the bumper from chasing after a bad target forever.
-	int targetTime[2] = {0, 0};
-
-	int n, turnNum;
-	cin >> turnNum;
-	while (turnNum >= 0)
-	{
 		// Read all the puck locations.
 		cin >> n;
 		plist.resize(n);
@@ -166,115 +170,69 @@ int main()
 			// Just ignore the path history for this sled.
 			int m;
 			cin >> m;
-			double dummy;
+
+			sled.path.resize(m);
 			for (int j = 0; j < m; j++)
 			{
-				cin >> dummy;
-				cin >> dummy;
+				cin >> sled.path[j].x;
+				cin >> sled.path[j].y;
 			}
 		}
+	}
+};
+
+Vector2D bully_tactic(const Bumper& bumper, const GameState& state) {
+	Vector2D force(0, 0);
+
+	int ENEMY_SLED = 1;
+	Vector2D target(400, 400);
+	
+	if (state.slist[ENEMY_SLED].path.empty()) {
+		target = state.slist[ENEMY_SLED].pos;
+	} else {
+		auto center = find_center(state.slist[ENEMY_SLED].path);
+
+		if (center.second > 100) {
+			center.first = state.slist[ENEMY_SLED].pos;
+		}
+
+		target = center.first;
+	}
+
+	run_to(bumper.pos, bumper.vel, target, force);
+
+	// force = (target - bumper.pos).limit(BUMPER_FORCE_LIMIT);
+
+	return force;
+}
+
+int main()
+{
+	GameState state;
+
+	int n, turnNum;
+	cin >> turnNum;
+
+	while (turnNum >= 0)
+	{
+		// Read game state
+		state.read();
+
+		const bool ENEMY_SLED = 1;
 
 		// Choose a move for each sled.
 		for (int i = 0; i < 2; i++)
 		{
-			Bumper &bumper = blist[i];
+			Bumper &bumper = state.blist[i];
 			Vector2D force(0, 0);
+			bool is_bully = (i == 1);
 
-			// Choose an up direction for this bumper.
-			Vector2D up(0, i == 0 ? -1 : 1);
-
-			// Move away from the center line until we get near the top or bottom.
-			if (bstate[i] == MoveUp)
-			{
-				if (fabs(bumper.pos.y - 400) > 380)
-				{
-					bstate[i] = SeekRight;
-					targetTime[i] = 0;
-				}
-				else
-					// Move up and scoot a little to the side to prevent stupid behavior.
-					force = force + BUMPER_FORCE_LIMIT * up + Vector2D(0.01, 0);
+			if (is_bully) {
+				force = bully_tactic(bumper, state);
+			} else {
+				// force = bully_tactic(bumper, state);
 			}
 
-			// Move right until we ge near the right edge.
-			if (bstate[i] == SeekRight && bumper.pos.x > 750)
-			{
-				bstate[i] = SeekLeft;
-			}
-
-			// Move left until we ge near the left edge.
-			if (bstate[i] == SeekLeft && bumper.pos.x < 50)
-			{
-				if (fabs(bumper.pos.y - 400) < 50)
-				{
-					bstate[i] = MoveUp;
-				}
-				else
-				{
-					bstate[i] = SeekRight;
-				}
-			}
-
-			if (bstate[i] != MoveUp)
-			{
-				// Go across the field and angle back toward the horizontal center
-				// line.
-				Vector2D across(bstate[i] == SeekRight ? 1 : -1, 0);
-
-				// If we don't have a target, find one.
-				if (targetTime[i] <= 0)
-				{
-					for (int j = 0; j < plist.size(); j++)
-						// Find a grey target that on my side of the center line,
-						// not moving too fast, close to me and kind of in the direction
-						// i'm moving.  Also, make sure it's not too close to the top or
-						// bottom.  Among these pucks, pick the one that's closest to
-						// the direction I should be heading.
-						if (plist[j].color == GREY &&
-							mySide(i, plist[j].pos) &&
-							plist[j].vel.mag() < 1 &&
-							(plist[j].pos - bumper.pos).mag() < 150 &&
-							(plist[j].pos - bumper.pos).norm() * across > 0.6 &&
-							fabs(plist[j].pos.y - 400) < 360 &&
-							(targetTime[i] <= 0 ||
-							 (plist[j].pos - bumper.pos).norm() * across >
-								 (target[i] - bumper.pos).norm() * across))
-						{
-							// Give 20 turns to hit the puck.
-							targetTime[i] = 20;
-							// Hit it on its outside edge to bump it closer to the
-							// center.
-							target[i] = plist[j].pos - across * 8 + up * 11;
-						}
-
-					if (targetTime[i] > 0)
-					{
-						// See what this player is doing
-						cerr << "New Target: " << i << " "
-							 << target[i].x << " " << target[i].y << endl;
-					}
-				}
-
-				// If w have a target, try to hit it.
-				if (targetTime[i] >= 0)
-				{
-					if (runTo(bumper.pos, bumper.vel, target[i], force))
-					{
-						targetTime[i] = 0;
-					}
-					else
-						targetTime[i] -= 1;
-				}
-				else
-				{
-					// Otherwise, just move across the field and angle toward
-					// the center line a little bit.
-					force = force + (across - up * 0.05).norm() * BUMPER_FORCE_LIMIT;
-				}
-			}
-
-			// Output the bumper's move.
-			force = {0, 0};
 			cout << force.x << " " << force.y << " ";
 		}
 
@@ -303,7 +261,7 @@ int main()
 			// Move the loop ahead.
 			sledDir = 0;
 		}
-		// sledDir = 0.39269;
+
 		// Output the sled's move.
 
 		cout << sledDir << endl;
