@@ -87,6 +87,8 @@ struct Vector2D
 	}
 };
 
+const Vector2D CENTER = {400, 400};
+
 /** Return a vector that's the sum of a and b. */
 Vector2D operator+(Vector2D const &a, Vector2D const &b)
 {

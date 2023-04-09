@@ -10,6 +10,8 @@
         "chrono": "cpp",
         "ios": "cpp",
         "string_view": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "queue": "cpp",
+        "type_traits": "cpp"
     }
 }

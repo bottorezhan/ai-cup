@@ -11,6 +11,9 @@
 #include <list>
 #include <tuple>
 #include <cassert>
+#include <queue>
+#include <cmath>
+#include <algorithm>
 
 using namespace std;
 
@@ -210,19 +213,10 @@ pair<Vector2D, double> find_center(vector<Vector2D> path)
 pair<double, Puck> get_closest_puck(const vector<Puck> &plist, Vector2D pos)
 {
 
-	double distance = -1;
-	Puck cp;
-
-	for (const auto &p : plist)
-	{
-		double dist = (p.pos - pos).mag();
-
-		if (distance == -1 || dist < distance)
-		{
-			distance = dist;
-			cp = p;
-		}
-	}
+	Puck cp = *min_element(plist.begin(), plist.end(), [&](const auto& a, const auto& b) {
+		return ((a.pos - pos).mag()) < ((b.pos - pos).mag());
+	});
+	double distance = (cp.pos - pos).mag();
 
 	return {distance, cp};
 }
@@ -233,23 +227,6 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 
 	const Sled &enemy_sled = state.en_sled;
 	Vector2D target = enemy_sled.pos;
-
-	// if (!enemy_sled.path.empty()) {
-	// 	target = enemy_sled.pos;
-	// 	Vector2D center(0, 0);
-	// 	double radius;
-	// 	tie(center, radius) = find_center(enemy_sled.path);
-
-	// 	if (radius > 100) {
-	// 		center = enemy_sled.pos;
-	// 	}
-
-	// 	target = center;
-	// 	cerr << "Circle radius: " << radius << " coords: " << center.x << ' ' << center.y << '\n';
-	// }
-
-
-	cerr << bumper.last_target << '\n';
 
 	bool target_existed = false;
 	Puck closest_puck;
@@ -266,25 +243,113 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 	if ((!target_existed and distance_to_closest_puck < 100) or (target_existed and distance_to_closest_puck < 200))
 	{
 		target = closest_puck.pos;
-		bool res = run_to(bumper.pos, bumper.vel, target, force, enemy_sled.dir);
-		cerr << res << '\n';
-		// run_to(bumper.pos, bumper.vel, target, force, enemy_sled.dir);
-
-		// force = (target - bumper.pos).limit(BUMPER_FORCE_LIMIT);
+		bool res = run_to(bumper.pos, bumper.vel, target, force);
 		bumper.last_target = closest_puck.index;
-		
-		// return force;
+		return force;
 	} else {
 		bumper.last_target = -1;
 	}
 
 	force = (target - bumper.pos).limit(BUMPER_FORCE_LIMIT);
+	// bool res = run_to(bumper.pos, bumper.vel, target, force);
 	return force;
+}
+
+Vector2D support_tactic(Bumper &bumper, const GameState &state)
+{
+	Vector2D force(0, 0);
+	Vector2D target = CENTER;
+
+	double mrl, mrr;
+
+	if (state.my_sled.pos.x < 200) {
+		mrl = 0;
+		mrr = 200;
+	} else {
+		mrl = 600;
+		mrr = 800;
+	}
+
+	for (auto p : state.en_pucks) {
+
+		if (mrl <= p.pos.x && p.pos.x <= mrr) {
+			target = p.pos;
+			bool res = run_to(bumper.pos, bumper.vel, target, force);
+			return force;
+		}
+	}
+
+	bool target_existed = (bumper.last_target != -1);
+	Puck closest_puck;
+	double distance_to_closest_puck;
+
+	if (target_existed) {
+		Vector2D last_target = state.all_pucks[bumper.last_target].pos;
+		double distance_to_center = (state.all_pucks[bumper.last_target].pos - CENTER).mag();
+
+		if (distance_to_center < 300) {
+			target = last_target;
+		} else {
+			bumper.last_target = -1;
+		}
+	}
+	
+	if (bumper.last_target == -1) {
+		vector<Puck> plist;
+
+		plist.insert(plist.end(), state.my_pucks.begin(),state.my_pucks.end());
+		plist.insert(plist.end(), state.nu_pucks.begin(),state.nu_pucks.end());
+
+		tie(distance_to_closest_puck, closest_puck) = get_closest_puck(plist, CENTER);
+		target = closest_puck.pos;
+		bumper.last_target = closest_puck.index;
+	}
+	
+	// force = (target - bumper.pos).limit(BUMPER_FORCE_LIMIT);
+	bool res = run_to(bumper.pos, bumper.vel, target, force);
+	return force;
+}
+
+void make_turn_rad(queue<double>& sled_moves, double rad, double ang_limit = SLED_TURN_LIMIT) {
+	int nu_moves = ceil(fabs(rad) / min(ang_limit, SLED_TURN_LIMIT));
+	double moves_rad = rad / nu_moves;
+
+	while (nu_moves--) {
+		sled_moves.push(moves_rad);
+	}
+}
+
+void make_turn_deg(queue<double>& sled_moves, double derg) {
+	double rad = derg / 180 * M_PI;
+	make_turn_rad(sled_moves, rad);
+}
+
+void move_to_point(queue<double>& moves, Sled sled, Vector2D target) {
+	cerr << target.x << ' ' << target.y << '\n';
+	int nunu = sled.dir / (M_PI * 2);
+	double dir = sled.dir - nunu * (M_PI * 2);
+
+	Vector2D dif = target - sled.pos;
+	double dif_ang = atan2(dif.y, dif.x);
+	double res = (dif_ang - dir);
+
+	// cerr << res << ' ' << dir << ' ' << dif_ang << '\n';
+
+	res = max(min(res, 0.5), -0.5);
+
+	double dist = dif.mag();
+
+	moves.push(res);
 }
 
 int main()
 {
 	GameState state;
+	queue<double> sled_moves;
+	sled_moves.push(0);
+	sled_moves.push(0);
+	sled_moves.push(0);
+	bool move_type = false;
 
 	int n, turnNum;
 	cin >> turnNum;
@@ -309,7 +374,7 @@ int main()
 			}
 			else
 			{
-				// force = bully_tactic(bumper, state);
+				force = support_tactic(bumper, state);
 			}
 
 			// cerr << force.x << " " << force.y << "\n";
@@ -318,37 +383,43 @@ int main()
 
 		const auto& sled = state.my_sled;
 
-		// cancel 
+		// Puck clos_puck;
+		// double clos_dist;
 
-		// Just keep making circles and march across the playing field.
-		double sledDir = 0;
-		int loopSize = 40;
-		int loopGap = 5;
-		int startup = 12;
+		
+		// tie(clos_dist, clos_puck) = get_closest_puck(state.en_pucks, sled.pos);
 
-		// Make the sled drive around in circles.
-		if (turnNum < startup)
-		{
-			// Initially, try to move off-center a little bit.
-			if (turnNum < 6)
-				sledDir = -0.2;
-			else
-				sledDir = 0.2;
+		// if (clos_dist < 10) {
+		// 	make_turn_rad(sled_moves, M_PI_2);
+		// 	make_turn_rad(sled_moves, M_PI * 2, 0.2);
+		// } else {
+		// 	move_to_point(sled_moves, sled, clos_puck.pos);
+		// }
+
+		if (sled_moves.empty()) {
+			make_turn_rad(sled_moves, M_PI_2);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			make_turn_rad(sled_moves, M_PI_2);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			make_turn_rad(sled_moves, M_PI_2);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			make_turn_rad(sled_moves, M_PI_2);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
+			sled_moves.push(0);
 		}
-		else if ((turnNum - startup) % (loopSize + loopGap) < loopSize)
-		{
-			// Drive in a loop most of the time.
-			sledDir = 2 * acos(-1.0) / loopSize;
-		}
-		else
-		{
-			// Move the loop ahead.
-			sledDir = 0;
-		}
-
-		// Output the sled's move.
-
-		cout << sledDir << endl;
+		
+		
+		cout << sled_moves.front() << endl;
+		sled_moves.pop();
 
 		cin >> turnNum;
 	}
