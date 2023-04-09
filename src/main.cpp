@@ -231,7 +231,7 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 	Puck closest_puck;
 	double distance_to_closest_puck;
 
-	if (bumper.last_target != -1 && (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag() < 200)
+	if (bumper.last_target != -1 && (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag() < 100)
 	{
 		closest_puck = state.all_pucks[bumper.last_target];
 		distance_to_closest_puck = (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag();
@@ -242,7 +242,7 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 		tie(distance_to_closest_puck, closest_puck) = get_closest_puck(state.en_pucks, enemy_sled.pos);
 	}
 
-	if ((!target_existed and distance_to_closest_puck < 100) or (target_existed and distance_to_closest_puck < 200))
+	if ((!target_existed and distance_to_closest_puck < 50) or (target_existed and distance_to_closest_puck < 100))
 	{
 		target = closest_puck.pos;
 		bool res = run_to(bumper.pos, bumper.vel, target, force);
@@ -382,7 +382,7 @@ int main()
 		{
 			Bumper &bumper = state.my_blist[i];
 			Vector2D force(0, 0);
-			bool is_bully = (i == 1);
+			bool is_bully = true;
 
 			if (is_bully)
 			{
@@ -390,7 +390,7 @@ int main()
 			}
 			else
 			{
-				force = support_tactic(bumper, state);
+				force = bully_tactic(bumper, state, {bumper.});
 			}
 
 			// cerr << force.x << " " << force.y << "\n";
@@ -399,11 +399,14 @@ int main()
 
 		const auto &sled = state.my_sled;
 
-		cerr << state.all_pucks[target_puck_index].pos.x << ' ' << state.all_pucks[target_puck_index].pos.y << '\n';
-		cerr << target_puck.pos.x << ' ' << target_puck.pos.y << '\n';
+		// cerr << state.all_pucks[target_puck_index].pos.x << ' ' << state.all_pucks[target_puck_index].pos.y << '\n';
+		// cerr << target_puck.pos.x << ' ' << target_puck.pos.y << '\n';
 
 		if (target_puck_index != -1 && state.all_pucks[target_puck_index].pos != target_puck.pos)
 		{	
+
+			cerr << "Target MOved !!!!\n";
+
 			while (!sled_moves.empty())
 				sled_moves.pop();
 			target_puck_index = -1;
@@ -461,7 +464,8 @@ int main()
 				sled_moves.push(0);
 				sled_moves.push(0);
 				sled_moves.push(0);
-				make_turn_rad(sled_moves, M_PI * 2, 0.3);
+				make_turn_rad(sled_moves, M_PI_2);
+				make_turn_rad(sled_moves, M_PI * 2, 0.2);
 				target_puck_index = -1;
 			}
 			else
