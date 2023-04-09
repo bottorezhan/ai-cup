@@ -346,10 +346,8 @@ int main()
 {
 	GameState state;
 	queue<double> sled_moves;
-	sled_moves.push(0);
-	sled_moves.push(0);
-	sled_moves.push(0);
-	bool move_type = false;
+	Puck target_puck;
+	int target_puck_index = -1;
 
 	int n, turnNum;
 	cin >> turnNum;
@@ -382,41 +380,46 @@ int main()
 		}
 
 		const auto& sled = state.my_sled;
-
-		// Puck clos_puck;
-		// double clos_dist;
-
-		
-		// tie(clos_dist, clos_puck) = get_closest_puck(state.en_pucks, sled.pos);
-
-		// if (clos_dist < 10) {
-		// 	make_turn_rad(sled_moves, M_PI_2);
-		// 	make_turn_rad(sled_moves, M_PI * 2, 0.2);
-		// } else {
-		// 	move_to_point(sled_moves, sled, clos_puck.pos);
-		// }
-
 		if (sled_moves.empty()) {
-			make_turn_rad(sled_moves, M_PI_2);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			make_turn_rad(sled_moves, M_PI_2);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			make_turn_rad(sled_moves, M_PI_2);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			make_turn_rad(sled_moves, M_PI_2);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
-			sled_moves.push(0);
+			if (target_puck_index == -1) {
+				pair<int, Puck> res;
+				for (auto mp : state.my_pucks) {
+					vector<int> cnt(3, 0);
+					for (auto np : state.all_pucks) {
+						if ((np.pos - mp.pos).mag() < 200) {
+							cnt[np.color]++;
+						}	
+					}
+
+					int score = 0;
+
+					if (cnt[0] == 0) {
+						score = 0;
+					} else if (cnt[1] == 0) {
+						score = cnt[2] * 2;
+					} else {
+						score = cnt[2] - cnt[1];
+					}
+					
+					if (res.first < score) {
+						res = {score, mp};
+					}
+				}
+
+				target_puck = res.second;
+				target_puck_index = res.second.index;
+			} else {
 		}
-		
+
+			if ((target_puck.pos - state.my_sled.pos).mag() < 20) {
+				sled_moves.push(0);
+				sled_moves.push(0);
+				make_turn_rad(sled_moves, M_PI * 2, 0.2);
+				target_puck_index = -1;
+			} else {
+				move_to_point(sled_moves, state.my_sled, target_puck.pos);
+			}
+		}
 		
 		cout << sled_moves.front() << endl;
 		sled_moves.pop();

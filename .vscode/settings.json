@@ -12,6 +12,7 @@
         "string_view": "cpp",
         "variant": "cpp",
         "queue": "cpp",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "ostream": "cpp"
     }
 }

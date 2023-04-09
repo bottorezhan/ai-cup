@@ -12,6 +12,7 @@ java -jar capture.jar -player builtin LoopyPlayer -player builtin LoopyPlayer
 java -jar capture.jar -player builtin RandomPlayer -player builtin LoopyPlayer
 
 java -jar capture.jar -player cpp bin/rebot -player builtin LoopyPlayer
+java -jar capture.jar -player cpp bin/rebot  -player cpp bin/rebot
 
 g++ -o bin/rebot src/main.cpp
 ```
