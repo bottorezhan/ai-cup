@@ -213,9 +213,8 @@ pair<Vector2D, double> find_center(vector<Vector2D> path)
 pair<double, Puck> get_closest_puck(const vector<Puck> &plist, Vector2D pos)
 {
 
-	Puck cp = *min_element(plist.begin(), plist.end(), [&](const auto& a, const auto& b) {
-		return ((a.pos - pos).mag()) < ((b.pos - pos).mag());
-	});
+	Puck cp = *min_element(plist.begin(), plist.end(), [&](const auto &a, const auto &b)
+						   { return ((a.pos - pos).mag()) < ((b.pos - pos).mag()); });
 	double distance = (cp.pos - pos).mag();
 
 	return {distance, cp};
@@ -232,11 +231,14 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 	Puck closest_puck;
 	double distance_to_closest_puck;
 
-	if (bumper.last_target != -1 && (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag() < 200) {
+	if (bumper.last_target != -1 && (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag() < 200)
+	{
 		closest_puck = state.all_pucks[bumper.last_target];
 		distance_to_closest_puck = (state.all_pucks[bumper.last_target].pos - enemy_sled.pos).mag();
 		target_existed = true;
-	} else {
+	}
+	else
+	{
 		tie(distance_to_closest_puck, closest_puck) = get_closest_puck(state.en_pucks, enemy_sled.pos);
 	}
 
@@ -246,7 +248,9 @@ Vector2D bully_tactic(Bumper &bumper, const GameState &state)
 		bool res = run_to(bumper.pos, bumper.vel, target, force);
 		bumper.last_target = closest_puck.index;
 		return force;
-	} else {
+	}
+	else
+	{
 		bumper.last_target = -1;
 	}
 
@@ -262,17 +266,22 @@ Vector2D support_tactic(Bumper &bumper, const GameState &state)
 
 	double mrl, mrr;
 
-	if (state.my_sled.pos.x < 200) {
+	if (state.my_sled.pos.x < 200)
+	{
 		mrl = 0;
 		mrr = 200;
-	} else {
+	}
+	else
+	{
 		mrl = 600;
 		mrr = 800;
 	}
 
-	for (auto p : state.en_pucks) {
+	for (auto p : state.en_pucks)
+	{
 
-		if (mrl <= p.pos.x && p.pos.x <= mrr) {
+		if (mrl <= p.pos.x && p.pos.x <= mrr)
+		{
 			target = p.pos;
 			bool res = run_to(bumper.pos, bumper.vel, target, force);
 			return force;
@@ -283,49 +292,58 @@ Vector2D support_tactic(Bumper &bumper, const GameState &state)
 	Puck closest_puck;
 	double distance_to_closest_puck;
 
-	if (target_existed) {
+	if (target_existed)
+	{
 		Vector2D last_target = state.all_pucks[bumper.last_target].pos;
 		double distance_to_center = (state.all_pucks[bumper.last_target].pos - CENTER).mag();
 
-		if (distance_to_center < 300) {
+		if (distance_to_center < 300)
+		{
 			target = last_target;
-		} else {
+		}
+		else
+		{
 			bumper.last_target = -1;
 		}
 	}
-	
-	if (bumper.last_target == -1) {
+
+	if (bumper.last_target == -1)
+	{
 		vector<Puck> plist;
 
-		plist.insert(plist.end(), state.my_pucks.begin(),state.my_pucks.end());
-		plist.insert(plist.end(), state.nu_pucks.begin(),state.nu_pucks.end());
+		plist.insert(plist.end(), state.my_pucks.begin(), state.my_pucks.end());
+		plist.insert(plist.end(), state.nu_pucks.begin(), state.nu_pucks.end());
 
 		tie(distance_to_closest_puck, closest_puck) = get_closest_puck(plist, CENTER);
 		target = closest_puck.pos;
 		bumper.last_target = closest_puck.index;
 	}
-	
+
 	// force = (target - bumper.pos).limit(BUMPER_FORCE_LIMIT);
 	bool res = run_to(bumper.pos, bumper.vel, target, force);
 	return force;
 }
 
-void make_turn_rad(queue<double>& sled_moves, double rad, double ang_limit = SLED_TURN_LIMIT) {
+void make_turn_rad(queue<double> &sled_moves, double rad, double ang_limit = SLED_TURN_LIMIT)
+{
 	int nu_moves = ceil(fabs(rad) / min(ang_limit, SLED_TURN_LIMIT));
 	double moves_rad = rad / nu_moves;
 
-	while (nu_moves--) {
+	while (nu_moves--)
+	{
 		sled_moves.push(moves_rad);
 	}
 }
 
-void make_turn_deg(queue<double>& sled_moves, double derg) {
+void make_turn_deg(queue<double> &sled_moves, double derg)
+{
 	double rad = derg / 180 * M_PI;
 	make_turn_rad(sled_moves, rad);
 }
 
-void move_to_point(queue<double>& moves, Sled sled, Vector2D target) {
-	cerr << target.x << ' ' << target.y << '\n';
+void move_to_point(queue<double> &moves, Sled sled, Vector2D target)
+{
+	// cerr << target.x << ' ' << target.y << '\n';
 	int nunu = sled.dir / (M_PI * 2);
 	double dir = sled.dir - nunu * (M_PI * 2);
 
@@ -379,48 +397,84 @@ int main()
 			cout << force.x << " " << force.y << " ";
 		}
 
-		const auto& sled = state.my_sled;
-		if (sled_moves.empty()) {
-			if (target_puck_index == -1) {
+		const auto &sled = state.my_sled;
+
+		cerr << state.all_pucks[target_puck_index].pos.x << ' ' << state.all_pucks[target_puck_index].pos.y << '\n';
+		cerr << target_puck.pos.x << ' ' << target_puck.pos.y << '\n';
+
+		if (target_puck_index != -1 && state.all_pucks[target_puck_index].pos != target_puck.pos)
+		{	
+			while (!sled_moves.empty())
+				sled_moves.pop();
+			target_puck_index = -1;
+		}
+
+		if (sled_moves.empty())
+		{
+
+			if (target_puck_index == -1)
+			{
 				pair<int, Puck> res;
-				for (auto mp : state.my_pucks) {
+				res.first = -1;
+
+				for (auto mp : state.my_pucks)
+				{
 					vector<int> cnt(3, 0);
-					for (auto np : state.all_pucks) {
-						if ((np.pos - mp.pos).mag() < 200) {
+
+					for (auto np : state.all_pucks)
+					{
+						if ((np.pos - mp.pos).mag() < 100)
+						{
 							cnt[np.color]++;
-						}	
+						}
 					}
 
 					int score = 0;
 
-					if (cnt[0] == 0) {
+					if (cnt[0] == 0)
+					{
 						score = 0;
-					} else if (cnt[1] == 0) {
+					}
+					else if (cnt[1] == 0)
+					{
 						score = cnt[2] * 2;
-					} else {
+					}
+					else
+					{
 						score = cnt[2] - cnt[1];
 					}
-					
-					if (res.first < score) {
+
+					if (res.first < score)
+					{
 						res = {score, mp};
 					}
 				}
 
+				cerr << res.first << '\n';
+
 				target_puck = res.second;
 				target_puck_index = res.second.index;
-			} else {
-		}
+			}
 
-			if ((target_puck.pos - state.my_sled.pos).mag() < 20) {
+			if ((target_puck.pos - state.my_sled.pos).mag() < 20)
+			{
 				sled_moves.push(0);
 				sled_moves.push(0);
-				make_turn_rad(sled_moves, M_PI * 2, 0.2);
+				sled_moves.push(0);
+				make_turn_rad(sled_moves, M_PI * 2, 0.3);
 				target_puck_index = -1;
-			} else {
-				move_to_point(sled_moves, state.my_sled, target_puck.pos);
+			}
+			else
+			{
+				Vector2D target_pos = target_puck.pos;
+				Vector2D v_to_target = target_pos - state.my_sled.pos;
+				v_to_target = v_to_target.norm();
+				Vector2D perp = Vector2D(-v_to_target.y, v_to_target.x) * 10;
+				target_pos = target_pos - perp;
+				move_to_point(sled_moves, state.my_sled, target_pos);
 			}
 		}
-		
+
 		cout << sled_moves.front() << endl;
 		sled_moves.pop();
 

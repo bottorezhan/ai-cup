@@ -119,4 +119,14 @@ double operator*(Vector2D const &a, Vector2D const &b)
 	return a.x * b.x + a.y * b.y;
 }
 
+double operator==(Vector2D const &a, Vector2D const &b)
+{
+	return (a.x == b.x && a.y == b.y);
+}
+
+double operator!=(Vector2D const &a, Vector2D const &b)
+{
+	return !(a == b);
+}
+
 #endif
