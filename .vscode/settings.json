@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "iostream": "cpp",
+        "tuple": "cpp",
+        "vector": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "__config": "cpp",
+        "__tuple": "cpp",
+        "chrono": "cpp",
+        "ios": "cpp",
+        "string_view": "cpp",
+        "variant": "cpp"
+    }
+}
